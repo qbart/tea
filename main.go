@@ -1,40 +1,25 @@
 package main
 
 import (
-	"context"
-	"flag"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
+	"log"
+	"net/http"
 
 	"github.com/wzshiming/ctc"
 )
 
-var (
-	subdomain *string = flag.String("subdomain", "", "Specify subdomain to use")
-	port      *uint   = flag.Uint("port", 3000, "Specify port to forward to")
-)
-
 func main() {
-	flag.Parse()
-	if *subdomain == "" {
-		fmt.Print(ctc.ForegroundRed, "Empty subdomain", ctc.Reset, "\n")
-		os.Exit(1)
-	}
-	fmt.Printf("Forwarding https://%s.tcp.sh -> http://localhost:%d\n", *subdomain, *port)
+	http.HandleFunc("/", handler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-LOOP:
-	for {
-		select {
-		case <-ctx.Done():
-			stop()
-			break LOOP
+func handler(w http.ResponseWriter, r *http.Request) {
+	for name, headers := range r.Header {
+		for _, h := range headers {
+			fmt.Printf("%s%s%s: %s\n", ctc.ForegroundGreen, name, ctc.Reset, h)
 		}
 	}
 
-	fmt.Println("Exiting..")
+	fmt.Printf("IP Address: %s\n", r.RemoteAddr)
+	fmt.Fprint(w, "ok")
 }
